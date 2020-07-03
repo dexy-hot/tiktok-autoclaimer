@@ -88,7 +88,9 @@ def main():
 			try:
 				get_usernames = str(input(Color("[$]").yellow + " Username(s) to Claim: "))
 				usernames = parse_usernames(get_usernames)
-			except:
+			except KeyboardInterrupt as e:
+				sys.exit(0)
+			except Exception as e:
 				pass
 			if len(usernames) == 0:
 				print(Color("[?] To load usernames:").blue + "\r\n 1. You can type the username list (.txt) filename.\r\n 2. You can type a single username.\r\n 3. You can type uernames sperated by comma ','.\r\n")
@@ -114,6 +116,9 @@ def main():
 				for username in usernames:
 					spinner.start("Attempting to claim " + str(username))
 					claim_request = tiktok.claim(username)
+					if "too frequently" in claim_request['message']:
+						time.sleep(10)
+						continue
 					if not "username is taken" in claim_request['message']:
 						spinner.stop()
 						print(Color("[!] ").alert() + claim_request['message'])
