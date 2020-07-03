@@ -6,6 +6,9 @@ Automatically and periodically tries to claim multiple TikTok usernames using pr
 - Install Tiky from Command Line using PyPi, with this command: <br> `pip3 install tiky`
 - You're done! Just type `tiky` in Command Line to run it.
 
+### API Documentation
+https://documenter.getpostman.com/view/10262162/T17FC9Ms?version=latest
+
 ![Screenshot](https://i.imgur.com/JoCRZBW.png)
 
 Contact me on Discord (<b>dexy#7742</b>) to purchase an API KEY.
