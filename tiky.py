@@ -48,8 +48,10 @@ def get_args():
 def thread_claim(new_username,tiktok,eventp):
 	try:
 		while True:	
-			claim_request = tiktok.claim(new_username)
-			if not "username is taken" in claim_request['message']:
+			check_request = tiktok.check(new_username)
+			if check_request["status"] == "error":
+				print(Color("[+]").green + " Username is available. Claiming..")
+				claim_request = tiktok.claim(new_username)
 				eventp.set()
 				print(Color("\r\n[!]").alert() + " " + claim_request['message'].capitalize() + "\r\n")
 				break
@@ -115,15 +117,14 @@ def main():
 			while True:
 				for username in usernames:
 					spinner.start("Attempting to claim " + str(username))
-					claim_request = tiktok.claim(username)
-					if "too frequently" in claim_request['message']:
-						time.sleep(10)
-						continue
-					if not "username is taken" in claim_request['message']:
+					check_request = tiktok.check(username)
+					if check_request["status"] == "error":
 						spinner.stop()
-						print(Color("[!] ").alert() + claim_request['message'])
-						usernames.remove(username)
-						break
+						print(Color("[+]").green + " Username is available. Claiming..")
+						claim_request = tiktok.claim(username)
+						print(Color("\r\n[!]").alert() + " " + claim_request['message'].capitalize() + "\r\n")
+						raise Exception("Exiting.")
+					
 				if(len(usernames) == 0):
 					print("[*] Finished.")
 					break
@@ -184,7 +185,6 @@ class TikTokClaimer():
 	
 	def __init__(self,clear=False,proxy=False,log=False):
 		self.endpoint = "https://tiktokapi.xyz/api"
-		self.captcha = "https://tiktokapi.xyz/captcha"
 		self.data = os.path.dirname(os.path.realpath(__file__)) + "/tik_data/"
 		self.password = False
 		self.clear = clear
@@ -252,6 +252,22 @@ class TikTokClaimer():
 		self.did_captcha = 0
 		return self.login()
 		
+	def check(self,username):
+		params = {
+			'username': username,
+			'key': self.apikey
+		}
+			
+		try:
+			send_req = self.s.get(self.endpoint + "/check",params=params).json()
+			return send_req
+		except Exception as e:
+			if self.log:
+				print(e)
+				traceback.print_exc(file=sys.stdout)
+			return {"message":"Something went wrong."}
+			
+
 	def claim(self,new_username):
 		if not self.account:
 			self.login()
