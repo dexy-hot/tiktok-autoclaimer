@@ -26,7 +26,7 @@ def get_args():
 	parser.add_argument("-c","--clear",help="Clear all session data.",action="store_true")
 	parser.add_argument("-l", "--log", help="Debug Mode. Show errors.",action="store_true")
 	parser.add_argument("-d", "--donate", help="Parse dexy BTC address and send a donation.",action="store_true")
-	parser.add_argument("-th", "--threads", help="Use multithreading.",action="store_true")
+	parser.add_argument("-th", "--threads", help="Turbo Mode. Uses multithreading.",action="store_true")
 	parser.add_argument("-p", "--proxy", help="HTTPs proxy for debugging requests.")
 	args = parser.parse_args()
 
@@ -61,6 +61,7 @@ def thread_claim(new_username,tiktok,eventp):
 	except:
 		eventp.set()
 		pass
+		
 def parse_usernames(data):
 	test = "^[A-Za-z0-9\_\.]+$"
 	if(data.endswith(".txt")):
@@ -81,14 +82,14 @@ def main():
 		argsconfig = get_args()
 		art()
 		spinner = Halo(text='Loading', spinner='dots')
-		tiktok = TikTokClaimer(log=argsconfig['log'],proxy=argsconfig['proxy'])
+		tiktok = TikTokClaimer(log=argsconfig['log'],proxy=argsconfig['proxy'],turbo=argsconfig['threads'])
 		tries = 0
 		usernames = []
-		
+		turbomode = "(s) to Claim" if not argsconfig['threads'] else " to Turbo"
 		#Load Usernames
 		while len(usernames) == 0:
 			try:
-				get_usernames = str(input(Color("[$]").yellow + " Username(s) to Claim: "))
+				get_usernames = str(input(Color("[$]").yellow + " Username{0}: ".format(turbomode)))
 				usernames = parse_usernames(get_usernames)
 			except KeyboardInterrupt as e:
 				sys.exit(0)
@@ -120,10 +121,14 @@ def main():
 					check_request = tiktok.check(username)
 					if check_request["status"] == "error":
 						spinner.stop()
-						print(Color("[+]").green + " Username is available. Claiming..")
+						print(Color("[+]").green + " {0} is available. Claiming with {1}..".format(username.capitalize(),tiktok.get_account()))
 						claim_request = tiktok.claim(username)
 						print(Color("\r\n[!]").alert() + " " + claim_request['message'].capitalize() + "\r\n")
-						raise Exception("Exiting.")
+						if "claimed" in claim_request["message"] or "once within one month" in claim_request["message"]: 
+							tiktok.pop_account() #Remove logged in account.
+						if "once within one month" not in claim_request["message"]:
+							usernames.remove(username)
+						break
 					
 				if(len(usernames) == 0):
 					print("[*] Finished.")
@@ -183,7 +188,7 @@ class MultiThread:
 	
 class TikTokClaimer():
 	
-	def __init__(self,clear=False,proxy=False,log=False):
+	def __init__(self,clear=False,proxy=False,log=False,turbo=False):
 		self.endpoint = "https://tiktokapi.xyz/api"
 		self.data = os.path.dirname(os.path.realpath(__file__)) + "/tik_data/"
 		self.password = False
@@ -191,8 +196,11 @@ class TikTokClaimer():
 		self.apikey = False
 		self.proxy = proxy
 		self.log = log
+		self.turbo = turbo
 		self.did_captcha = 0
 		self.s = requests.Session()
+		self.accounts = []
+		self.accounts_usernames = {}
 		self.s.verify = False
 		if self.proxy:
 			self.proxy = {'http':'http://' + self.proxy, 'https':'https://' + self.proxy}
@@ -208,13 +216,21 @@ class TikTokClaimer():
 			self.username = str(input("[+] TikTok Login Email or Username: ")) if not username else username
 			try:
 				with open(self.data + self.username + ".sess","r") as f:
-					self.account = f.read().strip()
+					self.accounts.append(f.read().strip())
 				print("[+] Session Loaded.")
 			except:
 				self.password = str(input("[+] TikTok Login Password: ")) if not password else password
-				self.account = self._login()
+				self.accounts.append(self._login())
 				with open(self.data + self.username + ".sess","w") as f:
-					f.write(self.account)
+					f.write(self.accounts[-1])
+					
+			self.accounts_usernames[self.accounts[-1]] = self.username
+			if not self.turbo:
+				add_another = str(input("[?] Want to add another account (y/n)? "))
+				if add_another.lower() == "y":
+					return self.login()
+			return self.accounts
+			
 	def _login(self):
 		spinner.start("Logging in")
 		try:
@@ -253,6 +269,8 @@ class TikTokClaimer():
 		return self.login()
 		
 	def check(self,username):
+		if len(self.accounts) == 0:
+			self.login()
 		params = {
 			'username': username,
 			'key': self.apikey
@@ -267,13 +285,22 @@ class TikTokClaimer():
 				traceback.print_exc(file=sys.stdout)
 			return {"message":"Something went wrong."}
 			
-
+	def pop_account(self):
+		if len(self.accounts) != 0:
+			return self.accounts.pop()
+		return False
+		
+	def get_account(self):
+		if len(self.accounts) != 0 and self.accounts[-1] in self.accounts_usernames:
+			return self.accounts_usernames[self.accounts[-1]]
+		return False
+	
 	def claim(self,new_username):
-		if not self.account:
+		if len(self.accounts) == 0:
 			self.login()
 
 		params = {
-			'account': self.account,
+			'account': self.accounts[-1],
 			'new_username': new_username,
 			'key': self.apikey
 		}

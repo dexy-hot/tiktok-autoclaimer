@@ -14,7 +14,7 @@ INSTALL_REQUIRES = [
 
 setup(
     name='tiky',
-    version='1.0.3',
+    version='1.0.4',
     description='TikTok AutoClaimer.',
     long_description='Automatically and periodically tries to claim multiple TikTok usernames using private API.',
     license='Dexy License',
