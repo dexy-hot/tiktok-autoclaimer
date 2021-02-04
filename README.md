@@ -1,4 +1,4 @@
-# Tiky
+# Tiky [Not Working Anymore]
 A TikTok Username AutoClaimer & Turbo.
 Automatically and periodically tries to claim multiple TikTok usernames using private API.
 
